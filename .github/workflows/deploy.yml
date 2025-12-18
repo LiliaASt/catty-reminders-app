@@ -1,48 +1,39 @@
-name: CD - Deploy Application
+name: CD Pipeline
 
 on:
   release:
     types: [published]
-  workflow_dispatch:  # Для ручного запуска
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -p 2423 course.prafdin.ru >> ~/.ssh/known_hosts
-    
-    - name: Deploy to server via SSH
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        ssh -p 2423 lilia@course.prafdin.ru << ENDSSH
-          cd /home/lilia/my-app
-          echo "Current directory: \$(pwd)"
-          echo "Pulling latest changes..."
-          git pull "https://\$GITHUB_TOKEN@github.com/LiliaASt/catty-reminders-app.git" github-actions
-          echo "Installing dependencies..."
-          python3 -m venv venv
-          ./venv/bin/pip install -r requirements.txt
-          ./venv/bin/playwright install --with-deps chromium
-          echo "Stopping previous application..."
-          pkill -f "uvicorn.*8181" || true
-          echo "Starting new application..."
-          nohup ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8181 > app.log 2>&1 &
-          echo "✅ Deployment completed!"
-        ENDSSH
-    
-    - name: Verify deployment
-      run: |
-        echo "🚀 Application deployed successfully!"
-        echo "📅 Deployment time: $(date)"
-        echo "🌐 Application URL: http://app.ascatryan.course.prafdin.ru"
-        echo "🔧 SSH port used: 2423"
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: course.prafdin.ru
+          port: 2423                # ваш SSH порт
+          username: lilia           # ваш пользователь на ВМ
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🚀 Starting Docker deployment..."
+            echo "Login to GHCR..."
+            echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "Pulling latest image..."
+            docker pull ghcr.io/liliaast/catty-reminders-app:latest
+            
+            echo "Removing old container (force)..."
+            docker rm -f catty-app 2>/dev/null || true
+            
+            echo "Starting new container..."
+            docker run -d \
+              --name catty-app \
+              -p 8181:8181 \
+              --restart unless-stopped \
+              ghcr.io/liliaast/catty-reminders-app:latest
+            
+            echo "✅ Deployment complete!"
+            echo "📦 Container status:"
+            docker ps
+            echo "🌐 App URL: http://app.ascatryan.course.prafdin.ru"
