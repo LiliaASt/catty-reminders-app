@@ -37,3 +37,4 @@ jobs:
             echo "📦 Container status:"
             docker ps
             echo "🌐 App URL: http://app.ascatryan.course.prafdin.ru"
+
