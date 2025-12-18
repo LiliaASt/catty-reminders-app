@@ -12,8 +12,8 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: course.prafdin.ru
-          port: 2423                # ваш SSH порт
-          username: lilia           # ваш пользователь на ВМ
+          port: 2423
+          username: lilia
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "🚀 Starting Docker deployment..."
