@@ -37,3 +37,4 @@ jobs:
           tags: |
             ghcr.io/liliaast/catty-reminders-app:latest
             ghcr.io/liliaast/catty-reminders-app:${{ github.sha }}
+
